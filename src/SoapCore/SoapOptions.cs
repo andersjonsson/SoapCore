@@ -1,9 +1,10 @@
-using SoapCore.Extensibility;
-using SoapCore.Meta;
 using System;
 using System.Collections.Generic;
 using System.ServiceModel.Channels;
 using System.Xml;
+using SoapCore.ServiceModel;
+using SoapCore.Extensibility;
+using SoapCore.Meta;
 
 namespace SoapCore
 {
@@ -41,6 +42,8 @@ namespace SoapCore
 		/// </summary>
 		public bool HttpsPostEnabled { get; set; } = true;
 
+		public Type SerializerIdentifier { get; set; }
+
 		public bool OmitXmlDeclaration { get; set; } = true;
 
 		public bool? StandAloneAttribute { get; set; } = null;
@@ -64,6 +67,7 @@ namespace SoapCore
 		public bool GenerateSoapActionWithoutContractName { get; set; } = false;
 
 		public bool NormalizeNewLines { get; set; } = true;
+		public IWsdlOperationNameGenerator WsdlOperationNameGenerator { get; set; } = new DefaultWsdlOperationNameGenerator();
 
 		[Obsolete]
 		public static SoapOptions FromSoapCoreOptions<T>(SoapCoreOptions opt)
@@ -86,6 +90,7 @@ namespace SoapCore
 				HttpGetEnabled = opt.HttpGetEnabled,
 				HttpPostEnabled = opt.HttpPostEnabled,
 				HttpsPostEnabled = opt.HttpsPostEnabled,
+				SerializerIdentifier = opt.SerializerIdentifier,
 				OmitXmlDeclaration = opt.OmitXmlDeclaration,
 				StandAloneAttribute = opt.StandAloneAttribute,
 				IndentXml = opt.IndentXml,

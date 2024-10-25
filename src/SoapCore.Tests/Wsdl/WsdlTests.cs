@@ -183,6 +183,27 @@ namespace SoapCore.Tests.Wsdl
 		}
 
 		[TestMethod]
+		public void CheckXmlIncludeTypesASMX()
+		{
+			StartService(typeof(XmlIncludeService));
+			var wsdl = GetWsdlFromAsmx();
+			StopServer();
+
+			var root = XElement.Parse(wsdl);
+			var dogElement = GetElements(root, _xmlSchema + "complexType").SingleOrDefault(a => a.Attribute("name")?.Value.Equals("Dog") == true);
+			Assert.IsNotNull(dogElement);
+
+			var catElement = GetElements(root, _xmlSchema + "complexType").SingleOrDefault(a => a.Attribute("name")?.Value.Equals("Cat") == true);
+			Assert.IsNotNull(dogElement);
+
+			var animalElement = GetElements(dogElement, _xmlSchema + "extension").SingleOrDefault(a => a.Attribute("base")?.Value.Equals("tns:Animal") == true);
+			Assert.IsNotNull(animalElement);
+
+			animalElement = GetElements(catElement, _xmlSchema + "extension").SingleOrDefault(a => a.Attribute("base")?.Value.Equals("tns:Animal") == true);
+			Assert.IsNotNull(animalElement);
+		}
+
+		[TestMethod]
 		public void CheckEmptyMembersServiceASMX()
 		{
 			//This did not work without fixing the MetaBodyWriter
@@ -324,6 +345,56 @@ namespace SoapCore.Tests.Wsdl
 		}
 
 		[TestMethod]
+		public void CheckSystemAndArraysImport()
+		{
+			StartService(typeof(SystemImportService));
+			var wsdl = GetWsdl();
+			StopServer();
+
+			var root = new XmlDocument();
+			root.LoadXml(wsdl);
+
+			var nsmgr = new XmlNamespaceManager(root.NameTable);
+			nsmgr.AddNamespace("wsdl", "http://schemas.xmlsoap.org/wsdl/");
+			nsmgr.AddNamespace("xs", "http://www.w3.org/2001/XMLSchema");
+
+			var customNamespace = "http://schemas.datacontract.org/2004/07/SoapCore.Tests.Wsdl.Services";
+			var systemNamespace = "http://schemas.datacontract.org/2004/07/System";
+			var arraysNamespace = "http://schemas.microsoft.com/2003/10/Serialization/Arrays";
+
+			// Schema with custom target namespace
+			var schemaPath = $"/wsdl:definitions/wsdl:types/xs:schema[@targetNamespace='{customNamespace}']";
+			var schemaElement = root.SelectSingleNode(schemaPath, nsmgr);
+			var systemImportElement = schemaElement.SelectSingleNode($"xs:import[@namespace='{systemNamespace}']", nsmgr);
+			var arraysImportElement = schemaElement.SelectSingleNode($"xs:import[@namespace='{arraysNamespace}']", nsmgr);
+
+			Assert.IsNotNull(schemaElement);
+			Assert.IsNotNull(systemImportElement);
+			Assert.IsNotNull(arraysImportElement);
+
+			// Schema with system target namespace
+			schemaPath =
+				$"/wsdl:definitions/wsdl:types" +
+				$"/xs:schema[@targetNamespace='{systemNamespace}']" +
+				$"/xs:complexType[@name='ArrayOfByte']" +
+				$"/..";
+
+			schemaElement = root.SelectSingleNode(schemaPath, nsmgr);
+			systemImportElement = schemaElement.SelectSingleNode($"xs:import[@namespace='{systemNamespace}']", nsmgr);
+			arraysImportElement = schemaElement.SelectSingleNode($"xs:import[@namespace='{arraysNamespace}']", nsmgr);
+
+			Assert.IsNull(systemImportElement);
+			Assert.IsNotNull(arraysImportElement);
+
+			// Schema with arrays target namespace
+			schemaPath = $"/wsdl:definitions/wsdl:types/xs:schema[@targetNamespace='{arraysNamespace}']";
+			schemaElement = root.SelectSingleNode(schemaPath, nsmgr);
+			arraysImportElement = schemaElement.SelectSingleNode($"xs:import[@namespace='{arraysNamespace}']", nsmgr);
+
+			Assert.IsNull(arraysImportElement);
+		}
+
+		[TestMethod]
 		public void CheckStreamDeclaration()
 		{
 			StartService(typeof(StreamService));
@@ -424,6 +495,26 @@ namespace SoapCore.Tests.Wsdl
 
 			var myMyTypeElement = GetElements(myMyTypeList, _xmlSchema + "element").SingleOrDefault(a => a.Attribute("name")?.Value.Equals("MyItem") == true);
 			Assert.IsNotNull(myMyTypeElement);
+		}
+
+		[TestMethod]
+		public void CheckGenericDataContract()
+		{
+			StartService(typeof(GenericDataContractService));
+			var wsdl = GetWsdl();
+			StopServer();
+
+			var root = XElement.Parse(wsdl);
+
+			var stringResult = GetElements(root, _xmlSchema + "element").SingleOrDefault(a => a.Attribute("name")?.Value.Equals("TestStringResult") == true);
+			Assert.IsNotNull(stringResult);
+			Assert.AreEqual("http://testnamespace.org", stringResult.Attribute(XNamespace.Xmlns + "q1").Value);
+			Assert.AreEqual("q1:MystringType", stringResult.Attribute("type").Value);
+
+			var myTypeResult = GetElements(root, _xmlSchema + "element").SingleOrDefault(a => a.Attribute("name")?.Value.Equals("TestMyArgResult") == true);
+			Assert.IsNotNull(myTypeResult);
+			Assert.AreEqual("http://testnamespace.org", myTypeResult.Attribute(XNamespace.Xmlns + "q2").Value);
+			Assert.AreEqual("q2:MyMyArgType", myTypeResult.Attribute("type").Value);
 		}
 
 		[TestMethod]
@@ -808,6 +899,32 @@ namespace SoapCore.Tests.Wsdl
 
 		[DataTestMethod]
 		[DataRow(SoapSerializer.XmlSerializer)]
+		public async Task CheckSoapHeaderTypes(SoapSerializer soapSerializer)
+		{
+			var wsdl = await GetWsdlFromMetaBodyWriter<ServiceWithSoapHeaders>(soapSerializer);
+			Trace.TraceInformation(wsdl);
+
+			var root = XElement.Parse(wsdl);
+			var nm = Namespaces.CreateDefaultXmlNamespaceManager(false);
+
+			var headerComplexType = root.XPathSelectElements("//xsd:complexType[@name='AuthenticationContextSoapHeader']", nm);
+			Assert.IsNotNull(headerComplexType);
+
+			var headerComplexTypePassword = root.XPathSelectElements("//xsd:complexType[@name='AuthenticationContextSoapHeader']/xsd:sequence/xsd:element[@name='OperatorCode' and @type='xsd:string' and not(@nillable) and @minOccurs=0 and @maxOccurs=1]", nm);
+			Assert.IsNotNull(headerComplexTypePassword);
+
+			var headerComplexTypeOperatorCode = root.XPathSelectElements("//xsd:complexType[@name='AuthenticationContextSoapHeader']/xsd:sequence/xsd:element[@name='Password' and @type='xsd:string' and not(@nillable) and @minOccurs=0 and @maxOccurs=1]", nm);
+			Assert.IsNotNull(headerComplexTypeOperatorCode);
+
+			var anyAttribute = root.XPathSelectElement("//xsd:complexType[@name='AuthenticationContextSoapHeader']/xsd:anyAttribute", nm);
+			Assert.IsNotNull(anyAttribute);
+
+			var headerElementOnOperation = root.XPathSelectElement("//wsdl:operation[@name='Method']/wsdl:input/soap:header[@message='tns:MethodAuthenticationContextSoapHeader' and @part='AuthenticationContextSoapHeader' and @use='literal']", nm);
+			Assert.IsNotNull(headerElementOnOperation);
+		}
+
+		[DataTestMethod]
+		[DataRow(SoapSerializer.XmlSerializer)]
 		[DataRow(SoapSerializer.DataContractSerializer)]
 		public async Task CheckUnqualifiedMembersService(SoapSerializer soapSerializer)
 		{
@@ -926,6 +1043,42 @@ namespace SoapCore.Tests.Wsdl
 		}
 
 		[TestMethod]
+		public void CheckEnumServiceWsdl()
+		{
+			StartService(typeof(EnumService));
+			var wsdl = GetWsdlFromAsmx();
+			StopServer();
+			Assert.IsNotNull(wsdl);
+
+			var root = XElement.Parse(wsdl);
+			var nm = Namespaces.CreateDefaultXmlNamespaceManager(false);
+
+			var normalEnum = root.XPathSelectElement("//xsd:complexType[@name='TypeWithEnums']/xsd:sequence/xsd:element[@name='Enum' and @type='tns:NulEnum' and not(@nillable)]", nm);
+			Assert.IsNotNull(normalEnum);
+
+			var nullableEnum = root.XPathSelectElement("//xsd:complexType[@name='TypeWithEnums']/xsd:sequence/xsd:element[@name='NullEnum' and @type='tns:NulEnum' and @nillable='true']", nm);
+			Assert.IsNotNull(nullableEnum);
+		}
+
+		[TestMethod]
+		public void CheckEnumSpecifiedBoolWsdl()
+		{
+			StartService(typeof(SpecifiedBoolService));
+			var wsdl = GetWsdlFromAsmx();
+			StopServer();
+			Assert.IsNotNull(wsdl);
+
+			var root = XElement.Parse(wsdl);
+			var nm = Namespaces.CreateDefaultXmlNamespaceManager(false);
+
+			var enumWithSpecifiedBool = root.XPathSelectElement("//xsd:complexType[@name='TypeWithSpecifiedEnum']/xsd:sequence/xsd:element[@name='Enum' and @type='tns:NulEnum' and not(@nillable) and @minOccurs='0' and @maxOccurs='1']", nm);
+			Assert.IsNotNull(enumWithSpecifiedBool);
+
+			var normalEnum = root.XPathSelectElement("//xsd:complexType[@name='TypeWithSpecifiedEnum']/xsd:sequence/xsd:element[@name='NormalEnum' and @type='tns:NulEnum' and not(@nillable) and @minOccurs='1' and @maxOccurs='1']", nm);
+			Assert.IsNotNull(normalEnum);
+		}
+
+		[TestMethod]
 		public void CheckFieldMembers()
 		{
 			StartService(typeof(OperationContractFieldMembersService));
@@ -1007,6 +1160,27 @@ namespace SoapCore.Tests.Wsdl
 
 			var propAnonAttribute = root.XPathSelectElement("//xsd:attribute[@name='PropAnonymous']", nm);
 			Assert.IsNotNull(propAnonAttribute);
+		}
+
+		[TestMethod]
+		public void CheckXmlArrayAttributeTypeServiceWsdl()
+		{
+			StartService(typeof(XmlArrayAttributeService));
+			var wsdl = GetWsdlFromAsmx();
+			StopServer();
+			Assert.IsNotNull(wsdl);
+
+			var root = XElement.Parse(wsdl);
+			var nm = Namespaces.CreateDefaultXmlNamespaceManager(false);
+
+			var typeWithXmlArrayAttribute = root.XPathSelectElement("//xsd:complexType[@name='TypeWithXmlArrayAttribute']/xsd:sequence/xsd:element[@name='AvlRoomTypeItems' and @type='tns:ArrayOfAvlRoomTypeItem' and @nillable='true' and @minOccurs='0' and @maxOccurs='1']", nm);
+			Assert.IsNotNull(typeWithXmlArrayAttribute);
+
+			var array = root.XPathSelectElement("//xsd:complexType[@name='ArrayOfAvlRoomTypeItem']/xsd:sequence/xsd:element[@name='AvlRoomTypeItem' and @type='tns:AvlRoomTypeItem' and @nillable='true' and @minOccurs='0' and @maxOccurs='unbounded']", nm);
+			Assert.IsNotNull(array);
+
+			var arrayItem = root.XPathSelectElement("//xsd:complexType[@name='AvlRoomTypeItem']/xsd:sequence/xsd:element[@name='RoomTypeCode' and @type='xsd:string' and not(@nillable) and @minOccurs='0' and @maxOccurs='1']", nm);
+			Assert.IsNotNull(arrayItem);
 		}
 
 		[DataTestMethod]
@@ -1117,6 +1291,76 @@ namespace SoapCore.Tests.Wsdl
 			Assert.IsNotNull(schemaElement.XPathSelectElement("//xsd:element[@name='ComplexInheritanceModelInputB' and @type='tns:ComplexInheritanceModelInputB']", nm));
 		}
 
+		[TestMethod]
+		public void CheckComplexBaseTypeServiceWsdl()
+		{
+			StartService(typeof(ComplexBaseTypeService));
+			var wsdl = GetWsdlFromAsmx();
+			StopServer();
+			Assert.IsNotNull(wsdl);
+
+			var root = XElement.Parse(wsdl);
+			var nm = Namespaces.CreateDefaultXmlNamespaceManager(false);
+
+			var derivedTypeContent = root.XPathSelectElement("//xsd:complexType[@name='DerivedType']/xsd:complexContent[@mixed='false']/xsd:extension[@base='tns:BaseType']/xsd:sequence/xsd:element[@name='DerivedName' and @type='xsd:string' and not(@nillable)]", nm);
+			Assert.IsNotNull(derivedTypeContent);
+
+			var baseTypeContent = root.XPathSelectElement("//xsd:complexType[@name='BaseType']/xsd:sequence/xsd:element[@name='BaseName' and @type='xsd:string' and not(@nillable)]", nm);
+			Assert.IsNotNull(baseTypeContent);
+
+			var listDerivedTypeMethodResponse = root.XPathSelectElement("//xsd:element[@name='MethodResponse']/xsd:complexType/xsd:sequence/xsd:element[@name='MethodResult' and @type='tns:ArrayOfDerivedType' and @nillable='true']", nm);
+			Assert.IsNotNull(listDerivedTypeMethodResponse);
+
+			var listDerivedType = root.XPathSelectElement("//xsd:complexType[@name='ArrayOfDerivedType']/xsd:sequence/xsd:element[@name='DerivedType' and @type='tns:DerivedType' and @nillable='true' and @minOccurs='0' and @maxOccurs='unbounded']", nm);
+			Assert.IsNotNull(listDerivedType);
+		}
+
+		[DataTestMethod]
+		[DataRow(SoapSerializer.XmlSerializer)]
+		public async Task CheckComplexAnonymousTypeListWsdl(SoapSerializer soapSerializer)
+		{
+			var wsdl = await GetWsdlFromMetaBodyWriter<ComplexAnonymousListService>(soapSerializer);
+			Trace.TraceInformation(wsdl);
+			Assert.IsNotNull(wsdl);
+
+			var root = XElement.Parse(wsdl);
+
+			// Check complexType exists for xmlserializer meta
+			var testResultElement = GetElements(root, _xmlSchema + "element").SingleOrDefault(a => a.Attribute("type") != null && a.Attribute("name")?.Value.Equals("TestResult") == true);
+			Assert.IsNotNull(testResultElement);
+
+			// Now check if we can match the array type up with it's declaration
+			var split = testResultElement.Attribute("type").Value.Split(':');
+			var typeNamespace = testResultElement.GetNamespaceOfPrefix(split[0]);
+
+			var matchingSchema = GetElements(root, _xmlSchema + "schema").Where(schema => schema.Attribute("targetNamespace")?.Value.Equals(typeNamespace.NamespaceName) == true);
+			Assert.IsTrue(matchingSchema.Count() > 0);
+
+			var matched = false;
+			XElement matchingComplexType = null;
+			foreach (var schema in matchingSchema)
+			{
+				matchingComplexType = GetElements(schema, _xmlSchema + "complexType").SingleOrDefault(a => a.Attribute("name")?.Value.Equals(split[1]) == true);
+				if (matchingComplexType != null)
+				{
+					matched = true;
+				}
+			}
+
+			Assert.IsTrue(matched);
+
+			// The complex type is an array with a single element, which is an anonymous complex type
+			var arrayElement = matchingComplexType.Element(_xmlSchema + "sequence")?.Element(_xmlSchema + "element");
+			Assert.IsNotNull(arrayElement);
+
+			// The element needs a name and a complex type
+			var nameAttribute = arrayElement.Attribute("name");
+			Assert.IsFalse(string.IsNullOrEmpty(nameAttribute.Value));
+
+			var arrayElementType = arrayElement.Element(_xmlSchema + "complexType");
+			Assert.IsNotNull(arrayElementType);
+		}
+
 		[TestCleanup]
 		public void StopServer()
 		{
@@ -1159,13 +1403,20 @@ namespace SoapCore.Tests.Wsdl
 			var service = new ServiceDescription(typeof(T), false);
 			var baseUrl = "http://tempuri.org/";
 			var xmlNamespaceManager = Namespaces.CreateDefaultXmlNamespaceManager(useMicrosoftGuid);
+			xmlNamespaceManager.AddNamespace("tns", service.GeneralContract.Namespace);
 			var defaultBindingName = !string.IsNullOrWhiteSpace(bindingName) ? bindingName : "BasicHttpBinding";
 			var bodyWriter = serializer == SoapSerializer.DataContractSerializer
-				? new MetaWCFBodyWriter(service, baseUrl, defaultBindingName, false, new[] { new SoapBindingInfo(MessageVersion.None, bindingName, portName) }) as BodyWriter
-				: new MetaBodyWriter(service, baseUrl, xmlNamespaceManager, defaultBindingName, new[] { new SoapBindingInfo(MessageVersion.None, bindingName, portName) }, useMicrosoftGuid) as BodyWriter;
+				? new MetaWCFBodyWriter(service, baseUrl, defaultBindingName, false, new[] { new SoapBindingInfo(MessageVersion.None, bindingName, portName) }, new DefaultWsdlOperationNameGenerator()) as BodyWriter
+				: new MetaBodyWriter(service, baseUrl, xmlNamespaceManager, defaultBindingName, new[] { new SoapBindingInfo(MessageVersion.None, bindingName, portName) }, useMicrosoftGuid, new DefaultWsdlOperationNameGenerator()) as BodyWriter;
 			var encoder = new SoapMessageEncoder(MessageVersion.Soap12WSAddressingAugust2004, Encoding.UTF8, false, XmlDictionaryReaderQuotas.Max, false, false, null, bindingName, portName, true);
 			var responseMessage = Message.CreateMessage(encoder.MessageVersion, null, bodyWriter);
-			responseMessage = new MetaMessage(responseMessage, service, xmlNamespaceManager, defaultBindingName, false);
+			responseMessage = new MetaMessage(
+				responseMessage,
+				service,
+				xmlNamespaceManager,
+				defaultBindingName,
+				false,
+				[responseMessage.Version]);
 
 			var memoryStream = new MemoryStream();
 			await encoder.WriteMessageAsync(responseMessage, null, memoryStream, true);
