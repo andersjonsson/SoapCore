@@ -69,11 +69,6 @@ namespace SoapCore
 
 			StringBuilder sb = new StringBuilder();
 
-			var w = XmlDictionaryWriter.CreateDictionaryWriter(XmlWriter.Create(sb));
-			writer.WriteBodyContents(w);
-			w.Flush();
-			var s = sb.ToString();
-
 			using (var xmlWriter = XmlWriter.Create(sb, new XmlWriterSettings()))
 			{
 				using (var xmlDictionaryWriter = XmlDictionaryWriter.CreateDictionaryWriter(xmlWriter))
@@ -82,7 +77,7 @@ namespace SoapCore
 				}
 			}
 
-			var body = XDocument.Parse(s);
+			var body = XDocument.Parse(sb.ToString());
 
 			var mess = new ParsedMessage(new MessageHeaders(version), new MessageProperties(), version, body, body.Root.IsEmpty);
 			if (action != null)
