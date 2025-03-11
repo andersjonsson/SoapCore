@@ -123,7 +123,7 @@ namespace SoapCore
 
 			using (var reader = GetReaderAtBodyContents())
 			{
-				while (!(reader.LocalName == "Body" && reader.NodeType == XmlNodeType.EndElement))
+				while (!(reader.LocalName == "Body" && reader.NamespaceURI == Version.Envelope.Namespace() && reader.NodeType == XmlNodeType.EndElement))
 				{
 					writer.WriteNode(reader, true);
 				}
