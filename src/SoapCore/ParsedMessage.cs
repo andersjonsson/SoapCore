@@ -73,11 +73,29 @@ namespace SoapCore
 			{
 				using (var xmlDictionaryWriter = XmlDictionaryWriter.CreateDictionaryWriter(xmlWriter))
 				{
+					//Create a Body-element to allow for multiple elements at the next level
+					xmlDictionaryWriter.WriteStartElement("Body", version.Envelope.Namespace());
+
 					writer.WriteBodyContents(xmlDictionaryWriter);
+
+					xmlDictionaryWriter.WriteEndElement();
 				}
 			}
 
 			var body = XDocument.Parse(sb.ToString());
+
+			foreach (var n in body.Root.Descendants())
+			{
+				foreach (var a in n.Attributes().Where(a => a.Value == "http://www.w3.org/2001/XMLSchema-instance"))
+				{
+					n.SetAttributeValue(a.Name, null);
+				}
+
+				foreach (var a in n.Attributes().Where(a => a.Value == "http://www.w3.org/2001/XMLSchema"))
+				{
+					n.SetAttributeValue(a.Name, null);
+				}
+			}
 
 			var mess = new ParsedMessage(new MessageHeaders(version), new MessageProperties(), version, body, body.Root is null);
 			if (action != null)
@@ -105,7 +123,10 @@ namespace SoapCore
 
 			using (var reader = GetReaderAtBodyContents())
 			{
-				writer.WriteNode(reader, true);
+				while (!(reader.LocalName == "Body" && reader.NodeType == XmlNodeType.EndElement))
+				{
+					writer.WriteNode(reader, true);
+				}
 			}
 		}
 
@@ -115,23 +136,16 @@ namespace SoapCore
 
 			XNamespace soapNs = _version.Envelope.Namespace();
 
-			if (_body.Descendants(soapNs + "Body").Any())
+			while (reader.Read()) // Advance through the document
 			{
-				while (reader.Read()) // Advance through the document
+				if (reader.NodeType == XmlNodeType.Element && reader.LocalName == "Body" && reader.NamespaceURI.Equals(soapNs.ToString(), StringComparison.OrdinalIgnoreCase))
 				{
-					if (reader.NodeType == XmlNodeType.Element && reader.LocalName == "Body" && reader.NamespaceURI.Equals(soapNs.ToString(), StringComparison.OrdinalIgnoreCase))
-					{
-						break;
-					}
-				}
-
-				while (reader.Read() && reader.NodeType != XmlNodeType.Element && reader.NodeType != XmlNodeType.EndElement)
-				{
+					break;
 				}
 			}
-			else //The message has been created without a surrounding envelope
+
+			while (reader.Read() && reader.NodeType != XmlNodeType.Element && reader.NodeType != XmlNodeType.EndElement)
 			{
-				reader.Read();
 			}
 
 			return XmlDictionaryReader.CreateDictionaryReader(reader);
