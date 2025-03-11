@@ -79,7 +79,7 @@ namespace SoapCore
 
 			var body = XDocument.Parse(sb.ToString());
 
-			var mess = new ParsedMessage(new MessageHeaders(version), new MessageProperties(), version, body, body.Root.IsEmpty);
+			var mess = new ParsedMessage(new MessageHeaders(version), new MessageProperties(), version, body, body.Root is null);
 			if (action != null)
 			{
 				mess.Headers.Action = action;
