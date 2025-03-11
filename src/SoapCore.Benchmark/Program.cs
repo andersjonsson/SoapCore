@@ -84,24 +84,24 @@ namespace SoapCore.Benchmark
 	{
 		static async Task Main()
 		{
-			BenchmarkRunner.Run<EchoBench>();
+			//BenchmarkRunner.Run<EchoBench>();
 
-			//var eb = new EchoBench();
-			//eb.Setup();
-			//eb.LoopNum = 100_000;
+			var eb = new EchoBench();
+			eb.Setup();
+			eb.LoopNum = 100_000;
 
-			//Console.WriteLine("Klicka");
-			//Console.ReadKey();
-			
+			Console.WriteLine("Klicka");
+			Console.ReadKey();
 
-			//Console.WriteLine("Running...");
 
-			//await eb.Echo();
-			
+			Console.WriteLine("Running...");
 
-			//Console.WriteLine("Klicka igen");
-			//Console.ReadKey();
-			//eb.Cleanup();
+			await eb.Echo();
+
+
+			Console.WriteLine("Klicka igen");
+			Console.ReadKey();
+			eb.Cleanup();
 		}
 	}
 }

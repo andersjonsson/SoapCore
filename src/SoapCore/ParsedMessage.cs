@@ -1,6 +1,7 @@
 using System;
 using System.IO;
 using System.Linq;
+using System.Reflection;
 using System.ServiceModel.Channels;
 using System.Text;
 using System.Threading.Tasks;
@@ -54,6 +55,50 @@ namespace SoapCore
 			return new ParsedMessage(headers, new MessageProperties(), version, body, isEmpty);
 		}
 
+		public static ParsedMessage FromBodyWriter(BodyWriter writer, MessageVersion version, string action)
+		{
+			if (writer == null)
+			{
+				throw new ArgumentNullException(nameof(writer));
+			}
+
+			if (version == null)
+			{
+				throw new ArgumentNullException(nameof(version));
+			}
+
+			var body = new XDocument();
+			using (var xmlWriter = body.CreateWriter())
+			{
+				using (var xmlDictionaryWriter = XmlDictionaryWriter.CreateDictionaryWriter(xmlWriter))
+				{
+					writer.WriteBodyContents(xmlDictionaryWriter);
+				}
+			}
+
+			//This loop construction removes the default xml namespaces from body
+			foreach (var n in body.Root.Descendants())
+			{
+				foreach (var a in n.Attributes().Where(a => a.Value == "http://www.w3.org/2001/XMLSchema-instance"))
+				{
+					n.SetAttributeValue(a.Name, null);
+				}
+
+				foreach (var a in n.Attributes().Where(a => a.Value == "http://www.w3.org/2001/XMLSchema"))
+				{
+					n.SetAttributeValue(a.Name, null);
+				}
+			}
+
+			var mess = new ParsedMessage(new MessageHeaders(version), new MessageProperties(), version, body, body.Root.IsEmpty);
+			if (action != null)
+			{
+				mess.Headers.Action = action;
+			}
+
+			return mess;
+		}
+
 		public XDocument GetBodyAsXDocument()
 		{
 			return _body;
@@ -66,6 +111,9 @@ namespace SoapCore
 
 		protected override void OnWriteBodyContents(XmlDictionaryWriter writer)
 		{
+			//I have to set this to make sure that the operation succeeds. Since this Message implementation has no stream it can safely be written multiple times
+			typeof(Message).GetField("<State>k__BackingField", BindingFlags.NonPublic | BindingFlags.Instance).SetValue(this, MessageState.Created);
+
 			using (var reader = GetReaderAtBodyContents())
 			{
 				writer.WriteNode(reader, true);
@@ -76,19 +124,25 @@ namespace SoapCore
 		{
 			var reader = new XDocumentXmlReader(_body);
 
-			//var reader = XmlReader.Create(new StringReader(_body.ToString()));
 			XNamespace soapNs = _version.Envelope.Namespace();
 
-			while (reader.Read()) // Advance through the document
+			if (_body.Descendants(soapNs + "Body").Any())
 			{
-				if (reader.NodeType == XmlNodeType.Element && reader.LocalName == "Body" && reader.NamespaceURI.Equals(soapNs.ToString(), StringComparison.OrdinalIgnoreCase))
+				while (reader.Read()) // Advance through the document
 				{
-					break;
+					if (reader.NodeType == XmlNodeType.Element && reader.LocalName == "Body" && reader.NamespaceURI.Equals(soapNs.ToString(), StringComparison.OrdinalIgnoreCase))
+					{
+						break;
+					}
+				}
+
+				while (reader.Read() && reader.NodeType != XmlNodeType.Element && reader.NodeType != XmlNodeType.EndElement)
+				{
 				}
 			}
-
-			while (reader.Read() && reader.NodeType != XmlNodeType.Element && reader.NodeType != XmlNodeType.EndElement)
+			else //The message has been created without a surrounding envelope
 			{
+				reader.Read();
 			}
 
 			return XmlDictionaryReader.CreateDictionaryReader(reader);

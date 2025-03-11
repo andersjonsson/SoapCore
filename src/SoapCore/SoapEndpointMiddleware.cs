@@ -605,7 +605,8 @@ namespace SoapCore
 				responseMessage = new T_MESSAGE
 				{
 					StandAloneAttribute = _options.StandAloneAttribute,
-					Message = Message.CreateMessage(soapMessageEncoder.MessageVersion, soapAction, bodyWriter),
+					//Message = Message.CreateMessage(soapMessageEncoder.MessageVersion, soapAction, bodyWriter),
+					Message = ParsedMessage.FromBodyWriter(bodyWriter, soapMessageEncoder.MessageVersion, soapAction),
 					AdditionalEnvelopeXmlnsAttributes = _options.AdditionalEnvelopeXmlnsAttributes,
 					NamespaceManager = xmlNamespaceManager
 				};
@@ -619,7 +620,8 @@ namespace SoapCore
 				responseMessage = new T_MESSAGE
 				{
 					StandAloneAttribute = _options.StandAloneAttribute,
-					Message = Message.CreateMessage(soapMessageEncoder.MessageVersion, null, bodyWriter),
+					//Message = Message.CreateMessage(soapMessageEncoder.MessageVersion, null, bodyWriter),
+					Message = ParsedMessage.FromBodyWriter(bodyWriter, soapMessageEncoder.MessageVersion, null),
 					AdditionalEnvelopeXmlnsAttributes = _options.AdditionalEnvelopeXmlnsAttributes,
 					NamespaceManager = xmlNamespaceManager
 				};
