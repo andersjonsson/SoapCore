@@ -67,8 +67,14 @@ namespace SoapCore
 				throw new ArgumentNullException(nameof(version));
 			}
 
-			var body = new XDocument();
-			using (var xmlWriter = body.CreateWriter())
+			StringBuilder sb = new StringBuilder();
+
+			var w = XmlDictionaryWriter.CreateDictionaryWriter(XmlWriter.Create(sb));
+			writer.WriteBodyContents(w);
+			w.Flush();
+			var s = sb.ToString();
+
+			using (var xmlWriter = XmlWriter.Create(sb, new XmlWriterSettings()))
 			{
 				using (var xmlDictionaryWriter = XmlDictionaryWriter.CreateDictionaryWriter(xmlWriter))
 				{
@@ -76,19 +82,7 @@ namespace SoapCore
 				}
 			}
 
-			//This loop construction removes the default xml namespaces from body
-			foreach (var n in body.Root.Descendants())
-			{
-				foreach (var a in n.Attributes().Where(a => a.Value == "http://www.w3.org/2001/XMLSchema-instance"))
-				{
-					n.SetAttributeValue(a.Name, null);
-				}
-
-				foreach (var a in n.Attributes().Where(a => a.Value == "http://www.w3.org/2001/XMLSchema"))
-				{
-					n.SetAttributeValue(a.Name, null);
-				}
-			}
+			var body = XDocument.Parse(s);
 
 			var mess = new ParsedMessage(new MessageHeaders(version), new MessageProperties(), version, body, body.Root.IsEmpty);
 			if (action != null)
