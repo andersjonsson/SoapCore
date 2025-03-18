@@ -524,7 +524,7 @@ namespace SoapCore
 					resultOutDictionary[parameterInfo.Name] = arguments[parameterInfo.Index];
 				}
 
-				responseMessage = CreateResponseMessage(operation, responseObject, resultOutDictionary, actionString, requestMessage, messageEncoder);
+				responseMessage = await CreateResponseMessageAsync(operation, responseObject, resultOutDictionary, actionString, requestMessage, messageEncoder);
 
 				httpContext.Response.ContentType = httpContext.Request.ContentType;
 				httpContext.Response.Headers["SOAPAction"] = responseMessage.Headers.Action;
@@ -586,7 +586,7 @@ namespace SoapCore
 			return operation != null;
 		}
 
-		private Message CreateResponseMessage(
+		private async Task<Message> CreateResponseMessageAsync(
 			OperationDescription operation,
 			object responseObject,
 			Dictionary<string, object> resultOutDictionary,
@@ -606,7 +606,7 @@ namespace SoapCore
 				{
 					StandAloneAttribute = _options.StandAloneAttribute,
 					//Message = Message.CreateMessage(soapMessageEncoder.MessageVersion, soapAction, bodyWriter),
-					Message = ParsedMessage.FromBodyWriter(bodyWriter, soapMessageEncoder.MessageVersion, soapAction),
+					Message = await ParsedMessage.FromBodyWriterAsync(bodyWriter, soapMessageEncoder.MessageVersion, soapAction),
 					AdditionalEnvelopeXmlnsAttributes = _options.AdditionalEnvelopeXmlnsAttributes,
 					NamespaceManager = xmlNamespaceManager
 				};
@@ -621,7 +621,7 @@ namespace SoapCore
 				{
 					StandAloneAttribute = _options.StandAloneAttribute,
 					//Message = Message.CreateMessage(soapMessageEncoder.MessageVersion, null, bodyWriter),
-					Message = ParsedMessage.FromBodyWriter(bodyWriter, soapMessageEncoder.MessageVersion, null),
+					Message = await ParsedMessage.FromBodyWriterAsync(bodyWriter, soapMessageEncoder.MessageVersion, null),
 					AdditionalEnvelopeXmlnsAttributes = _options.AdditionalEnvelopeXmlnsAttributes,
 					NamespaceManager = xmlNamespaceManager
 				};

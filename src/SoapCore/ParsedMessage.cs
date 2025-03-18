@@ -1,12 +1,15 @@
 using System;
 using System.IO;
+using System.IO.Pipelines;
 using System.Linq;
 using System.Reflection;
 using System.ServiceModel.Channels;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Xml;
 using System.Xml.Linq;
+using Microsoft.AspNetCore.Connections;
 using Microsoft.AspNetCore.Http;
 
 namespace SoapCore
@@ -55,7 +58,7 @@ namespace SoapCore
 			return new ParsedMessage(headers, new MessageProperties(), version, body, isEmpty);
 		}
 
-		public static ParsedMessage FromBodyWriter(BodyWriter writer, MessageVersion version, string action)
+		public static async Task<ParsedMessage> FromBodyWriterAsync(BodyWriter writer, MessageVersion version, string action)
 		{
 			if (writer == null)
 			{
@@ -67,8 +70,33 @@ namespace SoapCore
 				throw new ArgumentNullException(nameof(version));
 			}
 
-			StringBuilder sb = new StringBuilder();
 
+
+#if NET8_0_OR_GREATER
+			Pipe pipe = new Pipe();
+
+			var loadTask = XDocument.LoadAsync(pipe.Reader.AsStream(), LoadOptions.None, CancellationToken.None);
+
+			using (var xmlWriter = XmlWriter.Create(pipe.Writer.AsStream(), new XmlWriterSettings()))
+			{
+				using (var xmlDictionaryWriter = XmlDictionaryWriter.CreateDictionaryWriter(xmlWriter))
+				{
+					//Create a Body-element to allow for multiple elements at the next level
+					xmlDictionaryWriter.WriteStartElement("Body", version.Envelope.Namespace());
+
+					writer.WriteBodyContents(xmlDictionaryWriter);
+
+					xmlDictionaryWriter.WriteEndElement();
+				}
+			}
+
+			await pipe.Writer.FlushAsync();
+			await pipe.Writer.CompleteAsync();
+
+			var body = await loadTask;
+
+#else
+			StringBuilder sb = new StringBuilder();
 			using (var xmlWriter = XmlWriter.Create(sb, new XmlWriterSettings()))
 			{
 				using (var xmlDictionaryWriter = XmlDictionaryWriter.CreateDictionaryWriter(xmlWriter))
@@ -83,6 +111,7 @@ namespace SoapCore
 			}
 
 			var body = XDocument.Parse(sb.ToString());
+#endif
 
 			foreach (var n in body.Root.Descendants())
 			{
