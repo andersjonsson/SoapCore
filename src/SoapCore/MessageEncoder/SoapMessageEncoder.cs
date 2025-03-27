@@ -30,6 +30,9 @@ namespace SoapCore.MessageEncoder
 		private readonly bool _checkXmlCharacters;
 		private readonly bool _normalizeNewLines;
 
+		private readonly string _stringRepresentation;
+		private readonly int _hashCode;
+
 		public SoapMessageEncoder(MessageVersion version, Encoding writeEncoding, bool overwriteResponseContentType, XmlDictionaryReaderQuotas quotas, bool omitXmlDeclaration, bool checkXmlCharacters, XmlNamespaceManager xmlNamespaceOverrides, string bindingName, string portName, bool normalizeNewLines, int maxSoapHeaderSize = SoapMessageEncoderDefaults.MaxSoapHeaderSizeDefault)
 		{
 			_omitXmlDeclaration = omitXmlDeclaration;
@@ -55,6 +58,9 @@ namespace SoapCore.MessageEncoder
 			ContentType = GetContentType(MediaType, CharSet);
 
 			XmlNamespaceOverrides = xmlNamespaceOverrides;
+
+			_stringRepresentation = $"{MessageVersion.ToString()},{BindingName},{PortName}";
+			_hashCode = _stringRepresentation.GetHashCode();
 		}
 
 		public string BindingName { get; }
@@ -76,12 +82,12 @@ namespace SoapCore.MessageEncoder
 
 		public override int GetHashCode()
 		{
-			return $"{MessageVersion.ToString()},{BindingName},{PortName}".GetHashCode();
+			return _hashCode;
 		}
 
 		public override string ToString()
 		{
-			return $"{MessageVersion.ToString()},{BindingName},{PortName}";
+			return _stringRepresentation;
 		}
 
 		public bool IsContentTypeSupported(string contentType, bool checkCharset)
