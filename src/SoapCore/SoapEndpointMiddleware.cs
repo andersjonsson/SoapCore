@@ -702,7 +702,17 @@ namespace SoapCore
 				{
 					xmlReader.ReadStartElement(operation.Name, operation.Contract.Namespace);
 
-					var parameterDictionary = operation.InParameters.ToDictionary(p => p.Name);
+					SoapMethodParameterInfo httpContextParameter = null;
+					Dictionary<string, SoapMethodParameterInfo> parameterDictionary = new Dictionary<string, SoapMethodParameterInfo>();
+
+					foreach (var param in operation.InParameters)
+					{
+						parameterDictionary[param.Name] = param;
+						if (httpContextParameter == null && param.Parameter.ParameterType == typeof(HttpContext))
+						{
+							httpContextParameter = param;
+						}
+					}
 
 					var lastParameterIndex = -1;
 					while (!xmlReader.EOF)
@@ -757,8 +767,7 @@ namespace SoapCore
 						arguments[parameterInfo.Index] = argumentValue;
 					}
 
-					var httpContextParameter = operation.InParameters.FirstOrDefault(x => x.Parameter.ParameterType == typeof(HttpContext));
-					if (httpContextParameter != default)
+					if (httpContextParameter != null)
 					{
 						arguments[httpContextParameter.Index] = httpContext;
 					}
