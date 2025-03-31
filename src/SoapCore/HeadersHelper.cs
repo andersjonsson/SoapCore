@@ -162,19 +162,12 @@ namespace SoapCore
 					XmlDictionaryReader reader = null;
 					if (!message.IsEmpty)
 					{
-						if (message is ParsedMessage)
-						{
-							soapAction = message.GetReaderAtBodyContents().LocalName.AsSpan();
-						}
-						else
-						{
-							MessageBuffer mb = message.CreateBufferedCopy(int.MaxValue);
-							Message responseMsg = mb.CreateMessage();
-							message = mb.CreateMessage();
+						MessageBuffer mb = message.CreateBufferedCopy(int.MaxValue);
+						Message responseMsg = mb.CreateMessage();
+						message = mb.CreateMessage();
 
-							reader = responseMsg.GetReaderAtBodyContents();
-							soapAction = reader.LocalName.AsSpan();
-						}
+						reader = responseMsg.GetReaderAtBodyContents();
+						soapAction = reader.LocalName.AsSpan();
 					}
 				}
 			}
