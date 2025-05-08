@@ -30,15 +30,6 @@ namespace SoapCore.Tests.Wsdl
 			services.AddMvc();
 		}
 
-#if !NETCOREAPP3_0_OR_GREATER
-		public void Configure(IApplicationBuilder app, IHostingEnvironment env, ILoggerFactory loggerFactory)
-		{
-			app.UseSoapEndpoint(_serviceType, "/Service.svc", new SoapEncoderOptions(), SoapSerializer.DataContractSerializer, schemeOverride: _schemeOverride);
-			app.UseSoapEndpoint(_serviceType, "/Service.asmx", new SoapEncoderOptions(), SoapSerializer.XmlSerializer, schemeOverride: _schemeOverride);
-
-			app.UseMvc();
-		}
-#else
 		public void Configure(IApplicationBuilder app, IWebHostEnvironment env, ILoggerFactory loggerFactory)
 		{
 			app.UseRouting();
@@ -49,6 +40,5 @@ namespace SoapCore.Tests.Wsdl
 				x.UseSoapEndpoint(_serviceType, "/Service.asmx", new SoapEncoderOptions(), SoapSerializer.XmlSerializer, schemeOverride: _schemeOverride);
 			});
 		}
-#endif
 	}
 }

@@ -9,9 +9,7 @@ namespace SoapCore
 			return result switch
 			{
 				ObjectResult objectResult => (objectResult.StatusCode, objectResult.Value),
-#if NETCOREAPP3_1_OR_GREATER
 				JsonResult jsonResult => (200, jsonResult.Value), // JSON result defaults to 200 OK
-#endif
 				StatusCodeResult statusCodeResult => (statusCodeResult.StatusCode, null),
 				ContentResult contentResult => (contentResult.StatusCode ?? 200, contentResult.Content),
 				EmptyResult => (204, null), // No content

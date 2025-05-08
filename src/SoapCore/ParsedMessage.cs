@@ -53,32 +53,9 @@ namespace SoapCore
 
 			var reader = new StreamReader(pipe.Reader.AsStream(), readEncoding);
 
-#if NETCOREAPP3_0_OR_GREATER
 			var envelopeTask = XDocument.LoadAsync(reader, LoadOptions.None, ct);
 			await stream.CopyToAsync(pipe.Writer.AsStream(), ct);
-#else
-			var envelopeTask = Task.Factory.StartNew(() => { return XDocument.Load(reader); }, ct);
 
-			byte[] buffer = ArrayPool<byte>.Shared.Rent(1024);
-			try
-			{
-				var writeStream = pipe.Writer.AsStream();
-				while (true)
-				{
-					int readBytes = await stream.ReadAsync(buffer, 0, buffer.Length, ct);
-					if (readBytes == 0)
-					{
-						break;
-					}
-
-					await writeStream.WriteAsync(buffer, 0, readBytes, ct);
-				}
-			}
-			finally
-			{
-				ArrayPool<byte>.Shared.Return(buffer);
-			}
-#endif
 			await pipe.Writer.CompleteAsync();
 
 			var envelope = await envelopeTask;

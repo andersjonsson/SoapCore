@@ -40,11 +40,6 @@ namespace SoapCore.Tests.Serialization
 				})
 				.Configure(appBuilder =>
 				{
-#if !NETCOREAPP3_0_OR_GREATER
-					appBuilder.UseSoapEndpoint<TService>("/Service.svc", new SoapEncoderOptions(), SoapSerializer.DataContractSerializer);
-					appBuilder.UseSoapEndpoint<TService>("/Service.asmx", new SoapEncoderOptions(), SoapSerializer.XmlSerializer);
-					appBuilder.UseMvc();
-#else
 					appBuilder.UseRouting();
 
 					appBuilder.UseEndpoints(x =>
@@ -52,7 +47,6 @@ namespace SoapCore.Tests.Serialization
 						x.UseSoapEndpoint<TService>("/Service.svc", new SoapEncoderOptions(), SoapSerializer.DataContractSerializer);
 						x.UseSoapEndpoint<TService>("/Service.asmx", new SoapEncoderOptions(), SoapSerializer.XmlSerializer);
 					});
-#endif
 				})
 				.UseKestrel()
 				.UseUrls($"http://127.0.0.1:0")

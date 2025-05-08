@@ -33,34 +33,6 @@ namespace SoapCore.Tests.WsdlFromFile
 			services.AddMvc();
 		}
 
-#if !NETCOREAPP3_0_OR_GREATER
-		public void Configure(IApplicationBuilder app, IHostingEnvironment env, ILoggerFactory loggerFactory)
-		{
-			WsdlFileOptions options = new WsdlFileOptions
-			{
-				UrlOverride = string.Empty,
-				VirtualPath = string.Empty,
-				WebServiceWSDLMapping = new Dictionary<string, WebServiceWSDLMapping>
-				{
-					{
-						_serviceName + ".asmx", new WebServiceWSDLMapping
-						{
-							SchemaFolder = "/WsdlFromFile/" + _testFileFolder,
-							WsdlFile = _wsdlFile,
-							WSDLFolder = "/WsdlFromFile/" + _testFileFolder,
-							UrlOverride = "Management/" + _serviceName + ".asmx"
-						}
-					}
-				},
-				AppPath = env.ContentRootPath
-			};
-
-			app.UseSoapEndpoint(_serviceType, "/" + _serviceName + ".svc", new SoapEncoderOptions(), SoapSerializer.DataContractSerializer);
-			app.UseSoapEndpoint(_serviceType, "/" + _serviceName + ".asmx", new SoapEncoderOptions(), SoapSerializer.XmlSerializer, false, null, options);
-
-			app.UseMvc();
-		}
-#else
 		public void Configure(IApplicationBuilder app, IWebHostEnvironment env, ILoggerFactory loggerFactory)
 		{
 			WsdlFileOptions options = new WsdlFileOptions
@@ -90,6 +62,5 @@ namespace SoapCore.Tests.WsdlFromFile
 				x.UseSoapEndpoint(_serviceType, "/" + _serviceName + ".asmx", new SoapEncoderOptions(), SoapSerializer.XmlSerializer, false, null, options);
 			});
 		}
-#endif
 	}
 }

@@ -4,15 +4,14 @@ using System.ServiceModel.Channels;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using SoapCore.Extensibility;
 using SoapCore.Meta;
 using SoapCore.Serializer;
 
-#if NETCOREAPP3_0_OR_GREATER
-using Microsoft.AspNetCore.Routing;
-#endif
+
 
 namespace SoapCore
 {
@@ -99,7 +98,6 @@ namespace SoapCore
 			return builder.UseMiddleware<SoapEndpointMiddleware<T_MESSAGE>>(soapOptions);
 		}
 
-#if NETCOREAPP3_0_OR_GREATER
 		public static IEndpointConventionBuilder UseSoapEndpoint<T>(this IEndpointRouteBuilder routes, string path, SoapEncoderOptions encoder, SoapSerializer serializer, bool caseInsensitivePath = false, ISoapModelBounder soapModelBounder = null, WsdlFileOptions wsdlFileOptions = null, bool indentXml = true, bool omitXmlDeclaration = true, string schemeOverride = null)
 		{
 			return routes.UseSoapEndpoint<T, CustomMessage>(path, encoder, serializer, caseInsensitivePath, soapModelBounder, wsdlFileOptions, indentXml, omitXmlDeclaration, schemeOverride);
@@ -197,7 +195,6 @@ namespace SoapCore
 		{
 			return UseSoapEndpoint<T, CustomMessage>(routes, options);
 		}
-#endif
 
 		public static IServiceCollection AddSoapCore(this IServiceCollection serviceCollection)
 		{

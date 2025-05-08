@@ -172,17 +172,10 @@ namespace SoapCore
 			}
 		}
 
-#if !NETCOREAPP3_0_OR_GREATER
-		private static Task WriteMessageAsync(SoapMessageEncoder messageEncoder, Message responseMessage, HttpContext httpContext, bool indentXml)
-		{
-			return messageEncoder.WriteMessageAsync(responseMessage, httpContext, httpContext.Response.Body, indentXml);
-		}
-#else
 		private static Task WriteMessageAsync(SoapMessageEncoder messageEncoder, Message responseMessage, HttpContext httpContext, bool indentXml)
 		{
 			return messageEncoder.WriteMessageAsync(responseMessage, httpContext, httpContext.Response.BodyWriter, indentXml);
 		}
-#endif
 
 		private static string TryGetMultipartBoundary(HttpRequest request)
 		{
@@ -407,7 +400,6 @@ namespace SoapCore
 
 			context.Response.ContentType = "text/xml";
 
-#if NETCOREAPP3_1_OR_GREATER
 			XmlWriter writer = XmlWriter.Create(context.Response.BodyWriter.AsStream(), new XmlWriterSettings
 			{
 				Encoding = DefaultEncodings.UTF8,
@@ -417,19 +409,6 @@ namespace SoapCore
 			bodyWriter.WriteBodyContents(dictionaryWriter);
 			dictionaryWriter.Flush();
 			await context.Response.BodyWriter.FlushAsync();
-#else
-			var ms = new MemoryStream();
-			XmlWriter writer = XmlWriter.Create(ms, new XmlWriterSettings
-			{
-				Encoding = DefaultEncodings.UTF8,
-			});
-			XmlDictionaryWriter dictionaryWriter = XmlDictionaryWriter.CreateDictionaryWriter(writer);
-
-			bodyWriter.WriteBodyContents(dictionaryWriter);
-			dictionaryWriter.Flush();
-			ms.Seek(0, SeekOrigin.Begin);
-			await ms.CopyToAsync(context.Response.Body);
-#endif
 		}
 
 		private Func<Message, Task<Message>> MakeProcessorPipe(ISoapMessageProcessor[] soapMessageProcessors, HttpContext httpContext, Func<Message, Task<Message>> processMessageFunc)

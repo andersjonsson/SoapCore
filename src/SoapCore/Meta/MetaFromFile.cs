@@ -34,18 +34,6 @@ namespace SoapCore.Meta
 		/// </summary>
 		public string ServerUrl { get; set; }
 
-#if NETSTANDARD
-		public async Task<string> ReadLocalFileAsync(string path)
-		{
-			if (!File.Exists(path))
-			{
-				return string.Empty;
-			}
-
-			using var reader = File.OpenText(path);
-			return await reader.ReadToEndAsync();
-		}
-#else
 		public Task<string> ReadLocalFileAsync(string path)
 		{
 			if (!File.Exists(path))
@@ -55,7 +43,6 @@ namespace SoapCore.Meta
 
 			return File.ReadAllTextAsync(path);
 		}
-#endif
 
 		private XmlAttribute EnsureAttribute(XmlDocument xmlDoc, XmlNode node, string attributeName)
 		{
